@@ -4,6 +4,7 @@
 **Goal:** Picture-in-picture (PiP) with 3DoF head tracking
 **Status:** Planning / Pre-development
 **Last Updated:** 2026-07-12
+**Host Device:** Google Pixel 9
 
 ---
 
@@ -147,14 +148,32 @@ Each panel is a RenderTexture on a world-space Canvas or Quad mesh. IMU keeps pa
 - **Scripting Backend:** IL2CPP
 - Android phone with USB-C DisplayPort output to pair with glasses
 
-### Companion Device Options
+### Companion Device: Google Pixel 9
 
-| Device | Notes |
+**Confirmed host device for this project.**
+
+| Attribute | Detail |
 |---|---|
-| Samsung S24 / S25 (recommended) | Officially supported by XREAL ecosystem |
-| Any Android phone w/ DP Alt Mode | Should work as a display host |
-| XREAL Beam Pro | Standalone Android compute unit, best dev experience |
-| Laptop / Steam Deck | Works as display host but not for mobile AR testing |
+| USB-C spec | USB 3.2 Gen 2 (10 Gbps) |
+| DisplayPort Alt Mode | ✅ Yes — hardware supported out of the box |
+| Chipset | Google Tensor G4 |
+| Android version | Android 15+ |
+| XREAL official compatibility list | Not listed (Pixel 9 not in XREAL's verified device list) |
+| XREAL Nebula app | ❌ Reported incompatible on Pixel 9 Pro XL — irrelevant since Nebula is deprecated |
+| Display output mode | **Mirror only** — Pixel 9 currently does not support Android extended/desktop display mode |
+
+#### ⚠️ Mirror-Only Display — Critical Implication
+
+The Pixel 9's USB-C display output is **screen mirroring**, not extended display. This affects the architecture:
+
+- Android's `Presentation` API requires the phone to report the glasses as a **secondary/extended display** — this may not work on Pixel 9 with mirror mode
+- **Workaround:** Target the glasses as the *primary* display (run app full-screen on glasses, use phone only as a controller/input)
+- **Alternative:** Use a USB-C hub or adapter that forces extended mode, or wait for Android 16 / Android XR desktop mode (Google has signaled this is coming)
+- **Unity approach is unaffected** — Unity can render directly to whatever display it's given
+
+#### Cable Requirement
+
+Must use a USB-C cable with explicit DisplayPort Alt Mode support — not all USB-C cables carry DP signal.
 
 ### Key Android APIs
 
@@ -176,7 +195,8 @@ enterPictureInPictureMode(new PictureInPictureParams.Builder().build());
 
 ## Open Questions / Next Steps
 
-- [ ] Confirm phone + glasses USB-C DisplayPort works as secondary Presentation display on Android
+- [ ] Confirm Pixel 9 + xbxa01 USB-C connection — verify if glasses appear as extended or mirror-only display (run `adb shell dumpsys display` with glasses connected)
+- [ ] If mirror-only: prototype Unity full-screen on glasses as primary output with phone as controller
 - [ ] Test IMU access via Android SensorManager through Unity's AndroidJavaClass bridge
 - [ ] Decide: Unity-native renderer vs. Android Presentation API hybrid
 - [ ] Investigate if XREAL plans SDK support for xbxa01 (check developer.xreal.com changelog)
@@ -198,3 +218,5 @@ enterPictureInPictureMode(new PictureInPictureParams.Builder().build());
 | Android Presentation API | https://developer.android.com/reference/android/app/Presentation |
 | Unity Android docs | https://docs.unity3d.com/Manual/android.html |
 | GitHub repo | https://github.com/adourish/xbxa01 |
+| Pixel 9 specs | https://store.google.com/product/pixel_9_specs |
+| Android DisplayManager (extended display) | https://developer.android.com/reference/android/hardware/display/DisplayManager |
