@@ -41,10 +41,10 @@ public class PanelManager : MonoBehaviour
         main.panelId = "main";
         main.AnimateIn(0.3f);
 
-        // PiP panel — upper right
+        // PiP panel — upper right, entering 150ms after Main (SPEC step 10)
         var pip = SpawnPanel(pipPanelPrefab, new Vector2(3.2f, 1.6f), panelDepth);
         pip.panelId = "pip";
-        pip.AnimateIn(0.45f);
+        pip.AnimateIn(0.3f, 0.15f);
 
 #if UNITY_EDITOR || DEVELOPMENT_BUILD
         if (debugPanelPrefab != null)
@@ -91,14 +91,16 @@ public class PanelManager : MonoBehaviour
 
         Vector2 mainOffset = main.offset;
         float   mainDepth  = main.depth;
-        Vector3 mainScale  = main.transform.localScale;
+        Vector3 mainScale  = main.BaseScale;
 
         main.SetOffset(pip.offset);
         main.SetDepth(pip.depth);
-        main.transform.localScale = pip.transform.localScale;
+        main.BaseScale = pip.BaseScale;
+        main.transform.localScale = pip.BaseScale;
 
         pip.SetOffset(mainOffset);
         pip.SetDepth(mainDepth);
+        pip.BaseScale = mainScale;
         pip.transform.localScale = mainScale;
     }
 }

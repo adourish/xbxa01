@@ -32,6 +32,14 @@ public static class BuildScript
 
         Debug.Log($"[BuildScript] Building {variant} → {outputPath}");
 
+        // The scene is generated, not committed. Build it if this is a fresh clone.
+        if (!File.Exists(Scenes[0]))
+        {
+            Debug.Log($"[BuildScript] {Scenes[0]} missing — generating via SceneBuilder.");
+            SceneBuilder.BuildMainScene();
+            AssetDatabase.Refresh();
+        }
+
         // Player settings
         PlayerSettings.applicationIdentifier = AppIdentifier;
         PlayerSettings.productName           = AppName;

@@ -108,7 +108,7 @@ Pixel 9 (Android 15)
         │           └── RenderTexture or UI content
         │
         ├── Main Camera
-        │     └── rotation = HeadTracker.HeadRotation
+        │     └── static (identity rotation) — see World-Lock Mechanism
         │           └── renders WorldAnchor subtree
         │
         └── PhoneController.cs
@@ -147,14 +147,24 @@ Remap:
 
 ```
 Frame N:
-  headRotation = IMU quaternion (e.g., user turned 30° right)
-  camera.rotation = headRotation       (camera follows head)
+  headRotation = IMU quaternion, relative to the neutral pose captured at startup
+                 (e.g., user turned 30° right)
+
+  camera.rotation      = identity              (camera does NOT move)
   worldAnchor.rotation = Inverse(headRotation)
 
-  Panel world position = worldAnchor.localPos × worldAnchor.rotation
-                       = fixed localPos × Inverse(headRotation)
+  Panel position in camera space = Inverse(headRotation) × fixed localPos
   ∴ Panel appears stationary as head rotates.
 ```
+
+Counter-rotating the anchor and rotating the camera are two ways to express the
+same thing. Doing BOTH yields Inverse(headRotation)² — panels counter-rotate at
+twice head rate. Exactly one must be applied.
+
+HeadRotation is recentred: the sensor reports absolute orientation against ENU
+(magnetic north), so `HeadTracker` captures the first sample as the neutral pose
+and reports rotation relative to it. Without that, panels would anchor to north
+rather than to wherever the user happens to be facing at launch.
 
 ---
 
@@ -195,7 +205,23 @@ Frame N:
 
 ### Scene Setup (Main.unity)
 
-Create the following hierarchy:
+**The scene is generated, not hand-authored.** `Assets/Editor/SceneBuilder.cs` builds
+it (and the panel prefabs) from code, so it can be produced headlessly and reviewed
+as source. `BuildScript` calls it automatically if the scene is missing, so a fresh
+clone builds with no manual Editor work.
+
+To (re)generate it explicitly:
+
+```bat
+Unity.exe -batchmode -quit -projectPath . -executeMethod SceneBuilder.BuildMainScene
+```
+or in the Editor: **Tools ▸ XBXA01 ▸ Rebuild Main Scene**.
+
+Note the panel prefabs carry a **BoxCollider**. `PhoneController` selects panels with
+`Physics.Raycast`, which does not hit a world-space Canvas on its own — without the
+collider, drag and pinch silently never fire.
+
+The generated hierarchy:
 
 ```
 Scene: Main
@@ -210,17 +236,20 @@ Scene: Main
 └── PhoneController          ← PhoneController.cs
 ```
 
-**Camera rotation** — add this to AppController.Update():
-```csharp
-if (mainCamera != null)
-    mainCamera.transform.rotation = headTracker.HeadRotation;
-```
+**Camera rotation** — do NOT rotate the Main Camera.
 
-### LeanTween Dependency
+World-lock is achieved by exactly one mechanism: `WorldAnchor` counter-rotates by
+`Inverse(HeadRotation)` while the camera stays fixed. Rotating the camera by
+`HeadRotation` *as well* applies the inverse twice — panels then swing backwards at
+2× head rate, which fails AC-3.2. Pick one; this project uses the anchor.
 
-FloatingPanel uses LeanTween for animations. Import via:
-- Unity Asset Store: search "LeanTween" (free)
-- OR replace `LeanTween.scale(...)` calls with a simple coroutine if preferred.
+The Main Camera is a plain static camera. Leave its rotation at identity.
+
+### Dependencies
+
+**None.** FloatingPanel originally used LeanTween; its scale animations are now plain
+coroutines with equivalent easeOutBack/easeInBack curves, so the project has no Asset
+Store dependencies and builds from a clean clone.
 
 ---
 
@@ -300,6 +329,6 @@ adb shell dumpsys SurfaceFlinger | findstr -i "display\|mirror"
 | 1 | Does Pixel 9 DP Alt Mode work with xbxa01 cable? | High | Test `adb shell dumpsys display` with glasses connected |
 | 2 | Is mirror-mode acceptable UX? | Medium | Phone shows same view as glasses; design for glasses-primary |
 | 3 | IMU coordinate remap correct? | Medium | Validate with known rotations in first test session |
-| 4 | LeanTween available / acceptable dependency? | Low | Replace with coroutine if needed |
+| 4 | ~~LeanTween dependency~~ | Resolved | Replaced with coroutines; no external deps |
 | 5 | 120Hz stable on Pixel 9? | Low | Tensor G4 should handle it; monitor via DebugOverlay FPS |
 | 6 | XREAL SDK adds xbxa01 support? | Opportunity | Monitor developer.xreal.com; migration path is straightforward |

@@ -19,8 +19,16 @@ public class HeadTracker : MonoBehaviour
     private IMUListener _listener;
 #endif
 
-    // Raw rotation from IMU, updated on sensor thread via UpdateRotation().
+    // Head rotation relative to the neutral pose, updated on the sensor thread.
     private Quaternion _headRotation = Quaternion.identity;
+
+    // Inverse of the raw rotation captured at calibration. The sensor reports an
+    // absolute orientation against ENU (i.e. magnetic north), so without this the
+    // panels would anchor to north rather than to wherever the user is facing at
+    // launch. Recentering makes HeadRotation identity at the neutral pose.
+    private Quaternion _neutralInverse = Quaternion.identity;
+    private bool _needsRecenter = true;
+
     private readonly object _lock = new object();
 
     public Quaternion HeadRotation
@@ -30,7 +38,19 @@ public class HeadTracker : MonoBehaviour
 
     public bool IsTracking { get; private set; }
 
-    void Start()
+    /// <summary>
+    /// Treat the next sensor sample as the neutral (forward) pose.
+    /// Call on startup and whenever the user asks to re-centre.
+    /// </summary>
+    public void Recenter()
+    {
+        lock (_lock) { _needsRecenter = true; }
+    }
+
+    // Registration lives in OnEnable/OnDisable, not Start/OnDestroy: Unity does not
+    // re-run Start() when a component is re-enabled, and OnDestroy does not fire on
+    // an app pause. Putting it here is what makes pause/resume actually re-register.
+    void OnEnable()
     {
 #if UNITY_ANDROID && !UNITY_EDITOR
         InitializeSensor();
@@ -38,6 +58,11 @@ public class HeadTracker : MonoBehaviour
         IsTracking = false;
         Debug.LogWarning("[HeadTracker] IMU only available on Android device.");
 #endif
+    }
+
+    void OnDisable()
+    {
+        Shutdown();
     }
 
 #if UNITY_ANDROID && !UNITY_EDITOR
@@ -92,24 +117,46 @@ public class HeadTracker : MonoBehaviour
         float uz =  ay;
         float uw = -aw; // flip w to reverse handedness
 
-        var q = new Quaternion(ux, uy, uz, uw);
+        var raw = new Quaternion(ux, uy, uz, uw);
 
         lock (_lock)
         {
-            _headRotation = q;
+            if (_needsRecenter)
+            {
+                _neutralInverse = Quaternion.Inverse(raw);
+                _needsRecenter = false;
+            }
+
+            // Relative to the neutral pose, so identity == "facing forward".
+            _headRotation = _neutralInverse * raw;
         }
     }
 
     void OnDestroy()
     {
+        Shutdown();
+    }
+
+    void Shutdown()
+    {
+        IsTracking = false;
+
+        // Re-centre on the next sample, so resuming in a new orientation
+        // does not snap the panels to a stale neutral pose.
+        lock (_lock) { _needsRecenter = true; }
+
 #if UNITY_ANDROID && !UNITY_EDITOR
         if (_sensorManager != null && _listener != null)
         {
             _sensorManager.Call("unregisterListener", _listener);
             Debug.Log("[HeadTracker] Sensor unregistered.");
         }
+
         _sensorManager?.Dispose();
         _rotationSensor?.Dispose();
+        _sensorManager  = null;
+        _rotationSensor = null;
+        _listener       = null;
 #endif
     }
 }

@@ -1,3 +1,4 @@
+using System.Collections;
 using UnityEngine;
 
 /// <summary>
@@ -35,13 +36,19 @@ public class FloatingPanel : MonoBehaviour
     [HideInInspector] public bool isDragging;
 
     private Canvas _canvas;
-    private RectTransform _rectTransform;
+
+    // The panel's authored size (Main ~3.2x1.8, PiP ~1.1x0.6). Captured before any
+    // animation runs; animations must return to this, not to Vector3.one.
+    private Vector3 _baseScale = Vector3.one;
+
+    private Coroutine _scaleRoutine;
 
     void Awake()
     {
         _canvas = GetComponent<Canvas>();
         _canvas.renderMode = RenderMode.WorldSpace;
-        _rectTransform = GetComponent<RectTransform>();
+
+        _baseScale = transform.localScale;
 
         ApplyLayout();
     }
@@ -65,21 +72,79 @@ public class FloatingPanel : MonoBehaviour
         transform.localPosition = new Vector3(offset.x, offset.y, depth);
     }
 
-    /// <summary>Animate panel into view from scale 0.</summary>
-    public void AnimateIn(float duration = 0.25f)
+    /// <summary>
+    /// The panel's authored (full) scale. Swapping panels exchanges these.
+    /// </summary>
+    public Vector3 BaseScale
     {
-        transform.localScale = Vector3.zero;
-        LeanTween.scale(gameObject, Vector3.one, duration).setEaseOutBack();
+        get => _baseScale;
+        set => _baseScale = value;
     }
 
-    /// <summary>Animate panel out before destroying.</summary>
+    /// <summary>Animate panel into view from scale 0 up to its authored scale.</summary>
+    public void AnimateIn(float duration = 0.25f, float delay = 0f)
+    {
+        Restart(ScaleTo(_baseScale, duration, delay, EaseOutBack, null));
+    }
+
+    /// <summary>Animate panel out, then destroy it.</summary>
     public void AnimateOut(float duration = 0.2f, System.Action onDone = null)
     {
-        LeanTween.scale(gameObject, Vector3.zero, duration)
-            .setEaseInBack()
-            .setOnComplete(() => {
-                onDone?.Invoke();
-                Destroy(gameObject);
-            });
+        Restart(ScaleTo(Vector3.zero, duration, 0f, EaseInBack, () =>
+        {
+            onDone?.Invoke();
+            Destroy(gameObject);
+        }));
+    }
+
+    void Restart(IEnumerator routine)
+    {
+        if (_scaleRoutine != null) StopCoroutine(_scaleRoutine);
+        _scaleRoutine = StartCoroutine(routine);
+    }
+
+    IEnumerator ScaleTo(Vector3 target, float duration, float delay,
+                        System.Func<float, float> ease, System.Action onDone)
+    {
+        if (delay > 0f)
+        {
+            transform.localScale = Vector3.zero;
+            yield return new WaitForSeconds(delay);
+        }
+
+        Vector3 from = transform.localScale;
+
+        if (duration <= 0f)
+        {
+            transform.localScale = target;
+        }
+        else
+        {
+            for (float t = 0f; t < duration; t += Time.deltaTime)
+            {
+                transform.localScale = Vector3.LerpUnclamped(from, target, ease(t / duration));
+                yield return null;
+            }
+            transform.localScale = target;
+        }
+
+        _scaleRoutine = null;
+        onDone?.Invoke();
+    }
+
+    // Overshoot easings, equivalent to LeanTween's easeOutBack / easeInBack.
+    const float BackOvershoot = 1.70158f;
+
+    static float EaseOutBack(float t)
+    {
+        float s = BackOvershoot;
+        t -= 1f;
+        return t * t * ((s + 1f) * t + s) + 1f;
+    }
+
+    static float EaseInBack(float t)
+    {
+        float s = BackOvershoot;
+        return t * t * ((s + 1f) * t - s);
     }
 }
