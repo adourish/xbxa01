@@ -229,8 +229,8 @@ FloatingPanel uses LeanTween for animations. Import via:
 ### Quick Deploy (Pixel 9 plugged in)
 
 ```bat
-cd C:\projects\xbxa01\xbxa01
-build\deploy.bat debug
+cd C:\projects\xbxa01
+tools\deploy.bat debug
 ```
 
 This: builds APK → installs on Pixel 9 → launches app.
@@ -248,7 +248,7 @@ adb shell dumpsys display | findstr -i "display\|mDisplayId\|width\|height"
 adb shell dumpsys sensorservice | findstr -i "rotation"
 
 :: 4. Install APK
-adb install -r build\xbxa01.apk
+adb install -r build\xbxa01.apk   :: written by tools\deploy.bat
 
 :: 5. Launch
 adb shell am start -n com.xbxa01.glassesvr/com.unity3d.player.UnityPlayerActivity

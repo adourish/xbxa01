@@ -1,3 +1,4 @@
+using System;
 using UnityEngine;
 
 /// <summary>
@@ -16,7 +17,9 @@ public class IMUListener : AndroidJavaProxy
     }
 
     // Called by Android runtime when a new sensor sample arrives.
-    void onSensorChanged(AndroidJavaObject sensorEvent)
+    // Must be public: AndroidJavaProxy dispatches Java callbacks by reflection
+    // and only binds to public instance methods.
+    public void onSensorChanged(AndroidJavaObject sensorEvent)
     {
         // Retrieve the float[] values field via JNI directly to avoid
         // boxing overhead on the hot path (~50 calls/sec).
@@ -29,7 +32,7 @@ public class IMUListener : AndroidJavaProxy
         _tracker.UpdateRotation(values);
     }
 
-    void onAccuracyChanged(AndroidJavaObject sensor, int accuracy)
+    public void onAccuracyChanged(AndroidJavaObject sensor, int accuracy)
     {
         Debug.Log($"[IMUListener] Sensor accuracy changed: {accuracy}");
     }

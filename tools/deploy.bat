@@ -56,20 +56,24 @@ for /f "tokens=1" %%d in ('adb devices ^| findstr /R "device$"') do (
 :: ---- Unity headless build ----
 echo [INFO] Building Unity APK (%BUILD_TYPE%)...
 
+:: This script lives in tools/; the Unity project root is the repo root.
 set PROJECT_PATH=%~dp0..
-set OUTPUT_PATH=%~dp0%APK_NAME%
+set BUILD_DIR=%~dp0..\build
+set OUTPUT_PATH=%BUILD_DIR%\%APK_NAME%
 set BUILD_METHOD=BuildScript.BuildAndroid%BUILD_TYPE%
+
+if not exist "%BUILD_DIR%" mkdir "%BUILD_DIR%"
 
 "%UNITY_PATH%" ^
     -batchmode ^
     -quit ^
-    -logFile %~dp0unity_build.log ^
+    -logFile "%BUILD_DIR%\unity_build.log" ^
     -projectPath "%PROJECT_PATH%" ^
     -executeMethod %BUILD_METHOD% ^
     -outputPath "%OUTPUT_PATH%"
 
 if errorlevel 1 (
-    echo [ERROR] Unity build failed. Check build\unity_build.log
+    echo [ERROR] Unity build failed. Check %BUILD_DIR%\unity_build.log
     exit /b 1
 )
 

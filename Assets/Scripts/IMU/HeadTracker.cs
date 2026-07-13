@@ -79,6 +79,8 @@ public class HeadTracker : MonoBehaviour
     /// </summary>
     public void UpdateRotation(float[] values)
     {
+        if (values == null || values.Length < 3) return;
+
         float ax = values[0];
         float ay = values[1];
         float az = values[2];
