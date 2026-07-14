@@ -112,6 +112,10 @@ public class PhoneController : MonoBehaviour
         }
 
         float ratio = currentDist / Mathf.Max(0.01f, _initialPinchDist);
-        _selectedPanel.transform.localScale = _initialScale * ratio;
+        Vector3 newScale = _initialScale * ratio;
+        _selectedPanel.transform.localScale = newScale;
+        // Keep BaseScale in sync so a later swap preserves the user's resize
+        // instead of snapping back to the panel's originally authored size.
+        _selectedPanel.BaseScale = newScale;
     }
 }

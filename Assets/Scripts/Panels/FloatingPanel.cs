@@ -12,7 +12,7 @@ using UnityEngine;
 ///
 /// The Canvas is World Space, rendered by the main camera.
 /// </summary>
-[RequireComponent(typeof(Canvas))]
+[RequireComponent(typeof(Canvas), typeof(CanvasGroup))]
 public class FloatingPanel : MonoBehaviour
 {
     public enum PanelType { Main, PiP, Debug }
@@ -35,7 +35,22 @@ public class FloatingPanel : MonoBehaviour
     // Set by PhoneController during drag
     [HideInInspector] public bool isDragging;
 
+    [Header("Focus Dimming (SPEC step 13)")]
+    [Tooltip("Dim this panel as the head turns away from it. The camera never " +
+             "rotates (WorldAnchor counter-rotates instead), so world-forward is " +
+             "always the gaze direction and no camera reference is needed.")]
+    public bool dimOnLookAway = false;
+
+    [Tooltip("Degrees off-centre where dimming begins.")]
+    public float dimStartAngle = 25f;
+
+    [Tooltip("Degrees off-centre where the panel reaches its minimum alpha.")]
+    public float dimEndAngle = 55f;
+
+    [Range(0f, 1f)] public float dimmedAlpha = 0.35f;
+
     private Canvas _canvas;
+    private CanvasGroup _canvasGroup;
 
     // The panel's authored size (Main ~3.2x1.8, PiP ~1.1x0.6). Captured before any
     // animation runs; animations must return to this, not to Vector3.one.
@@ -47,10 +62,20 @@ public class FloatingPanel : MonoBehaviour
     {
         _canvas = GetComponent<Canvas>();
         _canvas.renderMode = RenderMode.WorldSpace;
+        _canvasGroup = GetComponent<CanvasGroup>();
 
         _baseScale = transform.localScale;
 
         ApplyLayout();
+    }
+
+    void Update()
+    {
+        if (!dimOnLookAway) return;
+
+        float angle = Vector3.Angle(Vector3.forward, transform.position);
+        float t = Mathf.InverseLerp(dimStartAngle, dimEndAngle, angle);
+        _canvasGroup.alpha = Mathf.Lerp(1f, dimmedAlpha, t);
     }
 
     public void ApplyLayout()
@@ -84,6 +109,9 @@ public class FloatingPanel : MonoBehaviour
     /// <summary>Animate panel into view from scale 0 up to its authored scale.</summary>
     public void AnimateIn(float duration = 0.25f, float delay = 0f)
     {
+        // Zero synchronously so a zero-delay call (Main panel) actually starts
+        // from invisible instead of tweening from-baseScale to baseScale.
+        transform.localScale = Vector3.zero;
         Restart(ScaleTo(_baseScale, duration, delay, EaseOutBack, null));
     }
 
@@ -107,10 +135,7 @@ public class FloatingPanel : MonoBehaviour
                         System.Func<float, float> ease, System.Action onDone)
     {
         if (delay > 0f)
-        {
-            transform.localScale = Vector3.zero;
             yield return new WaitForSeconds(delay);
-        }
 
         Vector3 from = transform.localScale;
 

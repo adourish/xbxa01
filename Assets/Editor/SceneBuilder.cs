@@ -33,7 +33,7 @@ public static class SceneBuilder
         Directory.CreateDirectory(ScenesDir);
         Directory.CreateDirectory(PrefabsDir);
 
-        var mainPrefab = CreatePanelPrefab("MainPanel", FloatingPanel.PanelType.Main, MainScale, Color.black);
+        var mainPrefab = CreatePanelPrefab("MainPanel", FloatingPanel.PanelType.Main, MainScale, Color.black, dimOnLookAway: true);
         var pipPrefab  = CreatePanelPrefab("PiPPanel",  FloatingPanel.PanelType.PiP,  PipScale,  new Color(0.1f, 0.1f, 0.12f));
 
         var scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
@@ -96,7 +96,7 @@ public static class SceneBuilder
     /// so PhoneController's Physics.Raycast can actually select it — a world-space
     /// Canvas alone is not hit by Physics.Raycast.
     /// </summary>
-    static FloatingPanel CreatePanelPrefab(string name, FloatingPanel.PanelType type, Vector3 scale, Color fill)
+    static FloatingPanel CreatePanelPrefab(string name, FloatingPanel.PanelType type, Vector3 scale, Color fill, bool dimOnLookAway = false)
     {
         var go = new GameObject(name, typeof(RectTransform));
 
@@ -108,9 +108,11 @@ public static class SceneBuilder
         canvas.renderMode = RenderMode.WorldSpace;
         go.AddComponent<CanvasScaler>();
         go.AddComponent<GraphicRaycaster>();
+        go.AddComponent<CanvasGroup>();
 
         var panel = go.AddComponent<FloatingPanel>();
         panel.panelType = type;
+        panel.dimOnLookAway = dimOnLookAway;
 
         var collider = go.AddComponent<BoxCollider>();
         collider.size = new Vector3(1f, 1f, 0.01f);

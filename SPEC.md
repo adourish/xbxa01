@@ -63,6 +63,7 @@
 | 3.2 | Panels remain fixed as head rotates ±45° | Panel position does not translate with head motion |
 | 3.3 | Main panel centred at neutral head pose | Main panel within ±5% of screen centre |
 | 3.4 | PiP panel offset upper-right | PiP visible in upper-right quadrant |
+| 3.5 | Main panel dims past ~25° off-centre | `FloatingPanel.dimOnLookAway` on Main lerps `CanvasGroup.alpha` 1→0.35 between 25°–55° off world-forward |
 
 ### AC-04 Touch Controls
 | # | Criterion | Pass condition |
