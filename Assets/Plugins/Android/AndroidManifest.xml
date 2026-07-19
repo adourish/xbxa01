@@ -18,9 +18,18 @@
     <!-- Screen orientation locked to landscape for 1920×1080 glasses output -->
     <uses-feature android:name="android.hardware.screen.landscape" android:required="true" />
 
+    <!-- Android 11+ package visibility: needed so AppWindow's VirtualAppWindow can
+         resolve another app's launch intent (getLaunchIntentForPackage). Without this,
+         other packages are invisible and launching them silently fails. -->
+    <queries>
+        <intent>
+            <action android:name="android.intent.action.MAIN" />
+            <category android:name="android.intent.category.LAUNCHER" />
+        </intent>
+    </queries>
+
     <application
         android:label="XBXA01 AR"
-        android:icon="@drawable/app_icon"
         android:theme="@android:style/Theme.Black.NoTitleBar.Fullscreen"
         android:hardwareAccelerated="true"
         android:allowBackup="false">

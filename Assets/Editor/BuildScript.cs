@@ -45,6 +45,13 @@ public static class BuildScript
         PlayerSettings.productName           = AppName;
         PlayerSettings.Android.targetArchitectures = AndroidArchitecture.ARM64;
         PlayerSettings.SetScriptingBackend(BuildTargetGroup.Android, ScriptingImplementation.IL2CPP);
+
+        // Unity 6 defaults the Android app entry to GameActivity. Our custom
+        // AndroidManifest.xml and tools\deploy.bat both target the classic
+        // com.unity3d.player.UnityPlayerActivity, so pin the entry to Activity —
+        // otherwise the manifest merger conflicts and `am start ...UnityPlayerActivity`
+        // has nothing to launch.
+        PlayerSettings.Android.applicationEntry = AndroidApplicationEntry.Activity;
         PlayerSettings.Android.minSdkVersion    = AndroidSdkVersions.AndroidApiLevel31;
         PlayerSettings.Android.targetSdkVersion = AndroidSdkVersions.AndroidApiLevel34;
 

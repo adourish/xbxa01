@@ -6,6 +6,20 @@
 **Last Updated:** 2026-07-12
 **Host Device:** Google Pixel 9
 
+> **⚠️ Superseded by [`SPEC.md`](SPEC.md).** This file is the original pre-development
+> handoff and is kept for context. Where it disagrees with `SPEC.md` or the code, the
+> code wins. Decisions since resolved:
+> - **Display:** mirror-only is confirmed; the app renders **Unity fullscreen with the
+>   glasses as the primary display**. The `Presentation` / secondary-display path
+>   ("Option A", below) was **not** taken — it requires an *extended* display the
+>   Pixel 9 does not expose.
+> - **Renderer:** the **Unity full renderer** ("Option B") is what shipped.
+> - **World-lock:** exactly one mechanism — `WorldAnchor` counter-rotates, the camera
+>   stays at identity. See `SPEC.md` §World-Lock Mechanism.
+> - **Panel content source:** answered. Panels are backed by a texture fed from the
+>   `AppWindow` subsystem, which launches an Android app onto a `VirtualDisplay` and
+>   streams its frames into the panel. See `SPEC.md` §Panel Content Sources.
+
 ---
 
 ## Device: XREAL xbx a01 (Model ID: XBXA01)
@@ -195,13 +209,13 @@ enterPictureInPictureMode(new PictureInPictureParams.Builder().build());
 
 ## Open Questions / Next Steps
 
-- [ ] Confirm Pixel 9 + xbxa01 USB-C connection — verify if glasses appear as extended or mirror-only display (run `adb shell dumpsys display` with glasses connected)
-- [ ] If mirror-only: prototype Unity full-screen on glasses as primary output with phone as controller
-- [ ] Test IMU access via Android SensorManager through Unity's AndroidJavaClass bridge
-- [ ] Decide: Unity-native renderer vs. Android Presentation API hybrid
+- [x] Confirm Pixel 9 + xbxa01 USB-C connection — **mirror-only** confirmed; app targets the glasses as primary display
+- [x] If mirror-only: prototype Unity full-screen on glasses as primary output with phone as controller — **done** (`AppController` + `PhoneController`)
+- [x] Test IMU access via Android SensorManager through Unity's AndroidJavaClass bridge — **done** (`HeadTracker` + `IMUListener`)
+- [x] Decide: Unity-native renderer vs. Android Presentation API hybrid — **Unity-native renderer**
 - [ ] Investigate if XREAL plans SDK support for xbxa01 (check developer.xreal.com changelog)
-- [ ] Define PiP content sources: video file, screen mirror, web view, camera feed?
-- [ ] Prototype: minimal Unity scene rendering to secondary display with IMU head lock
+- [x] Define PiP content sources: video file, screen mirror, web view, camera feed? — **launch an Android app onto a `VirtualDisplay`** and stream it into the panel (`AppWindow`); other sources (RenderTexture, WebView) can reuse the same panel-texture hook
+- [x] Prototype: minimal Unity scene rendering with IMU head lock — **done** (`SceneBuilder` generates `Main.unity`)
 
 ---
 

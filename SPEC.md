@@ -167,6 +167,50 @@ HeadRotation is recentred: the sensor reports absolute orientation against ENU
 and reports rotation relative to it. Without that, panels would anchor to north
 rather than to wherever the user happens to be facing at launch.
 
+### Panel Content Sources
+
+A `FloatingPanel` is just a world-space quad with a `Content` RawImage. What fills
+that RawImage is deliberately pluggable — `FloatingPanel.SetContentTexture(tex, flipV)`
+binds any `Texture` to the panel. The default fill is a flat colour; the first real
+source is a live Android app.
+
+**App-in-a-window (`AppWindow` + `VirtualAppWindow.java`):**
+
+```
+AppWindow.cs (Unity, main thread)
+  └── new VirtualAppWindow(activity, w, h)         ← Assets/Plugins/Android/*.java
+        ├── ImageReader(w, h, RGBA_8888)           ← CPU-readable frames
+        └── DisplayManager.createVirtualDisplay(    ← PUBLIC|PRESENTATION|OWN_CONTENT_ONLY
+              surface = imageReader.getSurface())
+  └── launch(packageName)
+        └── startActivity(intent,
+              ActivityOptions.setLaunchDisplayId(virtualDisplayId))
+  └── Update(): byte[] = acquireFrame()             ← newest RGBA, else null
+        └── Texture2D.LoadRawTextureData → Apply
+        └── FloatingPanel.SetContentTexture(tex, flipV:true)
+```
+
+The app runs on an off-screen `VirtualDisplay` we own; its frames are read back via
+`ImageReader` and uploaded into the panel texture, one copy per frame. Frames are
+top-down in memory, so the panel flips them in UV space (`flipV`) rather than paying a
+per-frame CPU row-flip.
+
+**Why ImageReader, not a SurfaceTexture/OES zero-copy bridge:** ImageReader needs no
+shared GL context, no native `.so`, and no external-OES shader, so it builds from a
+clean clone through Unity's normal Gradle step — consistent with the rest of this
+project (see §Dependencies). The cost is one `w*h*4` copy per frame: negligible at PiP
+size, fine for a main panel at ~30fps. The zero-copy `SurfaceTexture` path is the
+optimisation if that copy ever dominates.
+
+**Known limits (document, don't fight):**
+- From Android 10, only the *owner* of a virtual display may launch activities on it,
+  and some apps refuse to run on a secondary display (SecurityException, or they bounce
+  back to the default display). Your own activities and most standard apps work; a
+  hardened app may not. `launch()` catches and logs rather than crashing — the panel
+  just stays blank.
+- Package visibility (Android 11+): the target app's launcher intent is only resolvable
+  because of the `<queries>` block in `AndroidManifest.xml`.
+
 ---
 
 ## 4. How We Build It

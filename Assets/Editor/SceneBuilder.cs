@@ -27,13 +27,20 @@ public static class SceneBuilder
     static readonly Vector3 MainScale = new Vector3(3.2f, 1.8f, 1f);
     static readonly Vector3 PipScale  = new Vector3(1.1f, 0.6f, 1f);
 
+    // The app streamed into the main panel via VirtualDisplay (see SPEC §Panel Content
+    // Sources). Settings is present on every device and generally launches on a
+    // secondary display; change this to whatever app you want floating in the glasses.
+    // If it refuses the secondary display, the panel falls back to its fill and logcat
+    // says why — the app does not crash.
+    const string MainAppPackage = "com.android.settings";
+
     [MenuItem("Tools/XBXA01/Rebuild Main Scene")]
     public static void BuildMainScene()
     {
         Directory.CreateDirectory(ScenesDir);
         Directory.CreateDirectory(PrefabsDir);
 
-        var mainPrefab = CreatePanelPrefab("MainPanel", FloatingPanel.PanelType.Main, MainScale, Color.black, dimOnLookAway: true);
+        var mainPrefab = CreatePanelPrefab("MainPanel", FloatingPanel.PanelType.Main, MainScale, Color.black, dimOnLookAway: true, appPackage: MainAppPackage);
         var pipPrefab  = CreatePanelPrefab("PiPPanel",  FloatingPanel.PanelType.PiP,  PipScale,  new Color(0.1f, 0.1f, 0.12f));
 
         var scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
@@ -96,7 +103,7 @@ public static class SceneBuilder
     /// so PhoneController's Physics.Raycast can actually select it — a world-space
     /// Canvas alone is not hit by Physics.Raycast.
     /// </summary>
-    static FloatingPanel CreatePanelPrefab(string name, FloatingPanel.PanelType type, Vector3 scale, Color fill, bool dimOnLookAway = false)
+    static FloatingPanel CreatePanelPrefab(string name, FloatingPanel.PanelType type, Vector3 scale, Color fill, bool dimOnLookAway = false, string appPackage = null)
     {
         var go = new GameObject(name, typeof(RectTransform));
 
@@ -113,6 +120,16 @@ public static class SceneBuilder
         var panel = go.AddComponent<FloatingPanel>();
         panel.panelType = type;
         panel.dimOnLookAway = dimOnLookAway;
+
+        // Stream a live Android app into this panel via VirtualDisplay. Self-targets
+        // this FloatingPanel; falls back to the flat fill below if the launch fails.
+        if (!string.IsNullOrEmpty(appPackage))
+        {
+            var appWindow = go.AddComponent<AppWindow>();
+            appWindow.packageName   = appPackage;
+            appWindow.targetPanel   = panel;
+            appWindow.launchOnStart = true;
+        }
 
         var collider = go.AddComponent<BoxCollider>();
         collider.size = new Vector3(1f, 1f, 0.01f);

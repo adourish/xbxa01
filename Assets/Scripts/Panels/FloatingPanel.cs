@@ -1,5 +1,6 @@
 using System.Collections;
 using UnityEngine;
+using UnityEngine.UI;
 
 /// <summary>
 /// A single floating screen panel in the glasses display.
@@ -51,6 +52,7 @@ public class FloatingPanel : MonoBehaviour
 
     private Canvas _canvas;
     private CanvasGroup _canvasGroup;
+    private RawImage _content;   // the "Content" child; panel's display surface
 
     // The panel's authored size (Main ~3.2x1.8, PiP ~1.1x0.6). Captured before any
     // animation runs; animations must return to this, not to Vector3.one.
@@ -82,6 +84,30 @@ public class FloatingPanel : MonoBehaviour
     {
         transform.localPosition = new Vector3(offset.x, offset.y, depth);
         transform.localRotation = Quaternion.identity;
+    }
+
+    /// <summary>
+    /// Point this panel's display surface at a texture (an app-window frame, a
+    /// RenderTexture, etc.). Set flipV when the source is top-down in memory — Unity
+    /// samples bottom-up, so ImageReader/VirtualDisplay frames arrive upside down and
+    /// we flip in UV space (free) rather than flipping rows on the CPU each frame.
+    /// </summary>
+    public void SetContentTexture(Texture tex, bool flipV = false)
+    {
+        if (_content == null)
+        {
+            var go = transform.Find("Content");
+            if (go != null) _content = go.GetComponent<RawImage>();
+        }
+        if (_content == null)
+        {
+            Debug.LogError($"[FloatingPanel] {name} has no 'Content' RawImage to bind a texture to.");
+            return;
+        }
+
+        _content.texture = tex;
+        _content.color   = Color.white;              // was a flat fill; show the texture as-is
+        _content.uvRect  = flipV ? new Rect(0f, 1f, 1f, -1f) : new Rect(0f, 0f, 1f, 1f);
     }
 
     /// <summary>Move panel to a new offset (called by PhoneController on drag).</summary>
