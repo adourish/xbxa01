@@ -1,5 +1,12 @@
 # XBXA01 AR App — Full Specification
 
+> **⚠️ Primary experience moved to desktop mode — see [`DESKTOP_MODE.md`](DESKTOP_MODE.md).**
+> The world-locked multi-panel renderer specified below proved unusable in practice
+> (blind gestures; apps couldn't self-launch onto our untrusted VirtualDisplay). The
+> product is now a **phone trackpad + buttons + keyboard controller** driving **Android
+> desktop mode** on the glasses, with **3–4 window-layout presets**. This document
+> remains the spec for the renderer, which is retained as the **mirror-mode fallback**.
+
 ## 1. User Journey (Linear Walkthrough)
 
 ### Step 1 — Physical Setup

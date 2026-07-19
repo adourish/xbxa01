@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="xbx_a11y_description">XBXA01 Controller — lets the phone trackpad move a cursor, click, drag and snap windows on the glasses desktop.</string>
+    <string name="xbx_ime_label">XBXA01 Keyboard</string>
+</resources>
