@@ -171,8 +171,9 @@ rather than to wherever the user happens to be facing at launch.
 
 A `FloatingPanel` is just a world-space quad with a `Content` RawImage. What fills
 that RawImage is deliberately pluggable — `FloatingPanel.SetContentTexture(tex, flipV)`
-binds any `Texture` to the panel. The default fill is a flat colour; the first real
-source is a live Android app.
+binds any `Texture` to the panel. The default fill is a flat colour; two real sources
+exist — a live Android app (`AppWindow`, tethered launch) and a whole-screen mirror
+(`MediaProjectionWindow`, untethered but coarser) — described below.
 
 **App-in-a-window (`AppWindow` + `VirtualAppWindow.java`):**
 
@@ -220,9 +221,46 @@ optimisation if that copy ever dominates.
      `launch()` works in-app with no tether. Requires a custom ROM or OEM signing.
 - For fully untethered use without system signing, the alternative is **MediaProjection**
   (whole-screen capture with a one-time consent dialog) shown on a panel — one mirrored
-  screen rather than independent app windows.
+  screen rather than independent app windows. Implemented; see below.
 - Package visibility (Android 11+): the target app's launcher intent is only resolvable
   because of the `<queries>` block in `AndroidManifest.xml`.
+
+**Screen mirror fallback (`MediaProjectionWindow` + `ScreenCaptureBridge.java`):**
+
+```
+MediaProjectionWindow.cs (Unity, main thread)
+  └── RequestCapture()
+        └── ScreenCaptureBridge.requestPermission(activity, w, h)   ← static bridge
+              └── starts MediaProjectionRequestActivity (translucent)
+                    └── MediaProjectionManager.createScreenCaptureIntent()
+                          └── system consent dialog (one-time per launch)
+                    └── onActivityResult → ScreenCaptureBridge.onPermissionResult
+                          └── starts ScreenCaptureService (foreground, type=mediaProjection)
+                                └── MediaProjectionManager.getMediaProjection(code, data)
+                                └── ScreenCaptureBridge.start(context, projection)
+                                      ├── ImageReader(w, h, RGBA_8888)
+                                      └── projection.createVirtualDisplay(..., imageReader.getSurface())
+  └── Update(): byte[] = ScreenCaptureBridge.acquireFrame()         ← newest RGBA, else null
+        └── Texture2D.LoadRawTextureData → Apply
+        └── FloatingPanel.SetContentTexture(tex, flipV:true)
+```
+
+Unlike `AppWindow`/`VirtualAppWindow` (one object, one `VirtualDisplay`, owned by a
+single Activity call), `ScreenCaptureBridge` is a **static** Java class. MediaProjection's
+consent grant is an `Intent` result that only a real `Activity.onActivityResult` can
+receive — `UnityPlayerActivity` doesn't forward that to plugin code — so a translucent
+helper activity (`MediaProjectionRequestActivity`) exists solely to request it, and a
+foreground service (`ScreenCaptureService`) exists solely to hold it, since Android
+10+ requires `createVirtualDisplay()` to be called from a running foreground service,
+and Android 14+ additionally requires `foregroundServiceType="mediaProjection"` plus
+the `FOREGROUND_SERVICE_MEDIA_PROJECTION` permission. No single Unity-owned object
+spans all three components, so the frame buffer lives in the static bridge instead —
+`MediaProjectionWindow` polls it exactly like `AppWindow` polls `VirtualAppWindow`.
+
+Call `MediaProjectionWindow.RequestCapture()` (e.g. from a UI button, or set
+`requestOnStart = true` to prompt automatically) to show the one-time consent dialog;
+if the user denies or cancels, the panel keeps its checkerboard placeholder and
+`consumeDenied()` surfaces a warning in logcat.
 
 ---
 

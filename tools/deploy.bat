@@ -20,7 +20,7 @@ if "%BUILD_TYPE%"=="" set BUILD_TYPE=debug
 
 set APK_NAME=xbxa01.apk
 set PACKAGE=com.xbxa01.glassesvr
-set UNITY_PATH=C:\Program Files\Unity\Hub\Editor\6000.0.79f1\Editor\Unity.exe
+set UNITY_PATH=C:\UnityEditors\6000.0.79f1\Editor\Unity.exe
 
 :: -- Adjust this path to your Unity installation --
 if not exist "%UNITY_PATH%" (

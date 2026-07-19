@@ -17,6 +17,13 @@
     <!-- Screen orientation locked to landscape for 1920×1080 glasses output -->
     <uses-feature android:name="android.hardware.screen.landscape" android:required="true" />
 
+    <!-- ScreenCaptureService (MediaProjection fallback, SPEC §Known limits): a
+         foreground service is required to hold the projection grant on Android 10+,
+         and the mediaProjection service type + this permission are required on
+         Android 14+ (see ScreenCaptureService's class comment). -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PROJECTION" />
+
     <!-- Android 11+ package visibility: needed so AppWindow's VirtualAppWindow can
          resolve another app's launch intent (getLaunchIntentForPackage). Without this,
          other packages are invisible and launching them silently fails. -->
@@ -51,6 +58,19 @@
             <!-- Tell Android we handle display changes ourselves (no restart) -->
             <meta-data android:name="unityplayer.ForwardNativeEventsToDalvik" android:value="true" />
         </activity>
+
+        <!-- MediaProjection fallback (SPEC §Known limits): translucent activity that
+             owns the one-time screen-capture consent dialog. Not launchable from the
+             launcher; only started internally via ScreenCaptureBridge.requestPermission. -->
+        <activity
+            android:name="com.xbxa01.appwindow.MediaProjectionRequestActivity"
+            android:theme="@android:style/Theme.Translucent.NoTitleBar"
+            android:exported="false" />
+
+        <service
+            android:name="com.xbxa01.appwindow.ScreenCaptureService"
+            android:foregroundServiceType="mediaProjection"
+            android:exported="false" />
 
     </application>
 
