@@ -202,12 +202,25 @@ project (see §Dependencies). The cost is one `w*h*4` copy per frame: negligible
 size, fine for a main panel at ~30fps. The zero-copy `SurfaceTexture` path is the
 optimisation if that copy ever dominates.
 
-**Known limits (document, don't fight):**
-- From Android 10, only the *owner* of a virtual display may launch activities on it,
-  and some apps refuse to run on a secondary display (SecurityException, or they bounce
-  back to the default display). Your own activities and most standard apps work; a
-  hardened app may not. `launch()` catches and logs rather than crashing — the panel
-  just stays blank.
+**Known limits (verified on a Pixel 9, Android 15):**
+- **A non-system app cannot launch *other* apps onto its own virtual display.** The
+  display we create is *untrusted* (no `FLAG_TRUSTED`; setting it needs the
+  `ADD_TRUSTED_DISPLAY` signature permission a sideloaded app can't hold). Android's
+  `SafeActivityOptions.checkPermissions` then denies any cross-app `setLaunchDisplayId`
+  with a `SecurityException` — confirmed against Settings *and* Chrome. `launch()`
+  catches and logs it; the panel keeps its placeholder. So `AppWindow.launchOnStart`
+  defaults **off**: the app only creates the display and streams whatever renders on it.
+- **The launch must come from an elevated context.** Two options that work:
+  1. *Tethered:* `adb shell` (uid 2000) has the permission the app lacks. Run the app,
+     then `tools/launch_on_panel.sh <package>` — it finds the `xbxa01-appwindow` display
+     id via `dumpsys display` and `am start --display <id>`. Verified: Settings and
+     Chrome both render on the main panel.
+  2. *Self-contained:* build the app **system-signed** (platform key / privileged
+     install), grant `ADD_TRUSTED_DISPLAY`, create the display with `FLAG_TRUSTED`, and
+     `launch()` works in-app with no tether. Requires a custom ROM or OEM signing.
+- For fully untethered use without system signing, the alternative is **MediaProjection**
+  (whole-screen capture with a one-time consent dialog) shown on a panel — one mirrored
+  screen rather than independent app windows.
 - Package visibility (Android 11+): the target app's launcher intent is only resolvable
   because of the `<queries>` block in `AndroidManifest.xml`.
 
