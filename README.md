@@ -42,26 +42,73 @@ shrinks to input only. See `DESKTOP_MODE.md` §0 for the full writeup.
 
 ## Architecture (controller, current)
 
-```
-Pixel 9 (Android 15/16, desktop mode ON)
-│
-├── EXTERNAL DISPLAY (glasses)  ──►  Android Desktop (freeform windows)
-│                                          ▲
-│                                          │ driven by
-└── PHONE DISPLAY  ──►  XBXA01 Controller (this repo, Unity)
-         │
-         ├── TrackpadController.cs   touch → cursor deltas, taps, scroll, drag
-         ├── ControllerUI.cs         button bar → global actions + layout presets
-         ├── WindowLayoutManager.cs  4 window-arrangement presets
-         └── DesktopBridge.cs ──JNI──► DesktopController.java
-                                          ├── XbxAccessibilityService (pointer, gestures,
-                                          │      global actions, window snap, soft cursor)
-                                          └── XbxKeyboardService (IME)  (keystrokes → focused field)
+```mermaid
+flowchart TB
+    subgraph Pixel9["Pixel 9 — Android 15/16, desktop mode ON"]
+        subgraph Phone["Phone display"]
+            TC["TrackpadController.cs<br/>touch → cursor deltas, taps, scroll, drag"]
+            CU["ControllerUI.cs<br/>button bar → global actions"]
+            WLM["WindowLayoutManager.cs<br/>4 layout presets"]
+            DB["DesktopBridge.cs"]
+        end
+        subgraph Services["Android services"]
+            DC["DesktopController.java<br/>(JNI facade)"]
+            A11Y["XbxAccessibilityService<br/>pointer, gestures, global actions,<br/>window snap, soft cursor"]
+            IME["XbxKeyboardService (IME)<br/>keystrokes → focused field"]
+        end
+    end
+    subgraph Glasses["External display — glasses"]
+        Desktop["Android Desktop<br/>freeform windows"]
+    end
+
+    TC --> DB
+    CU --> DB
+    WLM --> DB
+    DB -- JNI --> DC
+    DC --> A11Y
+    DC --> IME
+    A11Y -- gestures / actions / snap --> Desktop
+    IME -- keystrokes --> Desktop
 ```
 
 Both Android services are ordinary components an end user enables once in Settings —
 no root, no system signing required for the MVP. Full detail, including the honest
 limits on cross-display gesture dispatch, is in `DESKTOP_MODE.md` §2–3.
+
+### Input path, end to end
+
+```mermaid
+sequenceDiagram
+    participant U as User (thumb on phone)
+    participant TC as TrackpadController
+    participant DB as DesktopBridge (JNI)
+    participant DC as DesktopController.java
+    participant A11Y as XbxAccessibilityService
+    participant WM as Android WindowManager
+    participant G as Glasses (external display)
+
+    U->>TC: drag / tap / long-press on trackpad
+    TC->>DB: cursor delta or click event
+    DB->>DC: JNI call
+    DC->>A11Y: move soft cursor / dispatchGesture(point)
+    A11Y->>WM: gesture or global action, targeted at external display
+    WM->>G: window state updates
+    G-->>U: cursor moves / window responds
+```
+
+The step `A11Y → WM` targeted at the *external* display is the one open risk in this
+chain — see caveat C2 below and `DESKTOP_MODE.md` §3.
+
+### Runtime mode selection
+
+```mermaid
+flowchart LR
+    Start(["App launch"]) --> DD{"DisplayDetector"}
+    DD -- ExtendedToGlasses --> Controller["Controller.unity<br/>desktop-mode trackpad UI"]
+    DD -- MirrorToGlasses --> Legacy["Main.unity<br/>world-locked panel renderer"]
+    Controller --> A11YIME["XbxAccessibilityService + XbxKeyboardService"]
+    Legacy --> Panels["FloatingPanel + WorldAnchor<br/>fed by AppWindow / MediaProjection"]
+```
 
 ---
 
