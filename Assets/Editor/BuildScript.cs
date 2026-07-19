@@ -18,9 +18,15 @@ public static class BuildScript
     private const string AppIdentifier = "com.xbxa01.glassesvr";
     private const string AppName       = "XBXA01 AR";
 
+    // Scene 0 is the desktop-mode controller (the product); Main.unity is the
+    // world-locked renderer, kept as the mirror-mode fallback. See DESKTOP_MODE.md.
+    private const string ControllerScene = "Assets/Scenes/Controller.unity";
+    private const string FallbackScene   = "Assets/Scenes/Main.unity";
+
     private static readonly string[] Scenes = new[]
     {
-        "Assets/Scenes/Main.unity",
+        ControllerScene,
+        FallbackScene,
     };
 
     public static void BuildAndroiddebug()  => Build(BuildOptions.Development | BuildOptions.AllowDebugging, "debug");
@@ -33,11 +39,17 @@ public static class BuildScript
 
         Debug.Log($"[BuildScript] Building {variant} → {outputPath}");
 
-        // The scene is generated, not committed. Build it if this is a fresh clone.
-        if (!File.Exists(Scenes[0]))
+        // Scenes are generated, not committed. Build any that a fresh clone is missing.
+        if (!File.Exists(FallbackScene))
         {
-            Debug.Log($"[BuildScript] {Scenes[0]} missing — generating via SceneBuilder.");
+            Debug.Log($"[BuildScript] {FallbackScene} missing — generating via SceneBuilder.");
             SceneBuilder.BuildMainScene();
+            AssetDatabase.Refresh();
+        }
+        if (!File.Exists(ControllerScene))
+        {
+            Debug.Log($"[BuildScript] {ControllerScene} missing — generating via ControllerSceneBuilder.");
+            ControllerSceneBuilder.BuildControllerScene();
             AssetDatabase.Refresh();
         }
 

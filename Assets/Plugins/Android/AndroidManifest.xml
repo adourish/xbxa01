@@ -24,6 +24,11 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PROJECTION" />
 
+    <!-- Desktop-mode controller needs no extra runtime permissions: the IME's
+         BIND_INPUT_METHOD and the accessibility service's BIND_ACCESSIBILITY_SERVICE are
+         enforced on the <service> elements and held by the system, and the soft cursor is
+         drawn as a TYPE_ACCESSIBILITY_OVERLAY (no SYSTEM_ALERT_WINDOW required). -->
+
     <!-- Android 11+ package visibility: needed so AppWindow's VirtualAppWindow can
          resolve another app's launch intent (getLaunchIntentForPackage). Without this,
          other packages are invisible and launching them silently fails. -->
@@ -47,7 +52,7 @@
             android:screenOrientation="landscape"
             android:launchMode="singleTask"
             android:configChanges="mcc|mnc|locale|touchscreen|keyboard|keyboardHidden|navigation|orientation|screenLayout|uiMode|screenSize|smallestScreenSize|fontScale|layoutDirection|density"
-            android:resizeableActivity="false"
+            android:resizeableActivity="true"
             android:exported="true">
 
             <intent-filter>
@@ -71,6 +76,34 @@
             android:name="com.xbxa01.appwindow.ScreenCaptureService"
             android:foregroundServiceType="mediaProjection"
             android:exported="false" />
+
+        <!-- Desktop-mode pointer/gesture engine. The user enables it once in
+             Settings ▸ Accessibility; the system holds BIND_ACCESSIBILITY_SERVICE. -->
+        <service
+            android:name="com.xbxa01.desktop.XbxAccessibilityService"
+            android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.accessibilityservice.AccessibilityService" />
+            </intent-filter>
+            <meta-data
+                android:name="android.accessibilityservice"
+                android:resource="@xml/xbx_accessibility_config" />
+        </service>
+
+        <!-- Keyboard path. The user enables + selects it once in
+             Settings ▸ Languages & input; the system holds BIND_INPUT_METHOD. -->
+        <service
+            android:name="com.xbxa01.desktop.XbxKeyboardService"
+            android:permission="android.permission.BIND_INPUT_METHOD"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.view.InputMethod" />
+            </intent-filter>
+            <meta-data
+                android:name="android.view.im"
+                android:resource="@xml/xbx_ime_method" />
+        </service>
 
     </application>
 
