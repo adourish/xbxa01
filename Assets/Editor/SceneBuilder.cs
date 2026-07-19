@@ -77,8 +77,14 @@ public static class SceneBuilder
         SetRef(worldAnchor, "headTracker", headTracker);
 
         SetRef(panelManager, "worldAnchor",     worldAnchor);
-        SetRef(panelManager, "mainPanelPrefab", mainPrefab);
-        SetRef(panelManager, "pipPanelPrefab",  pipPrefab);
+        // Reload the prefab assets fresh from disk: the mainPrefab/pipPrefab handles
+        // were captured before NewScene(..., Single), which invalidates them, so
+        // assigning them directly serialized a null reference (the runtime NRE in
+        // PanelManager.SpawnDefaultPanels). LoadAssetAtPath gives a live asset ref.
+        var mainPrefabAsset = AssetDatabase.LoadAssetAtPath<FloatingPanel>(PrefabsDir + "/MainPanel.prefab");
+        var pipPrefabAsset  = AssetDatabase.LoadAssetAtPath<FloatingPanel>(PrefabsDir + "/PiPPanel.prefab");
+        SetRef(panelManager, "mainPanelPrefab", mainPrefabAsset);
+        SetRef(panelManager, "pipPanelPrefab",  pipPrefabAsset);
 
         SetRef(phoneController, "panelManager", panelManager);
         SetRef(phoneController, "mainCamera",   cam);
