@@ -1,0 +1,10 @@
+apply plugin: 'com.android.library'
+
+android {
+    namespace "com.xbxa01.desktop.reslib"
+    compileSdk 34
+
+    defaultConfig {
+        minSdk 31
+    }
+}

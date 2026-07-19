@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Resource-only Android Library for the desktop-mode controller (XbxAccessibilityService,
+    XbxKeyboardService). Unity's loose Assets/Plugins/Android/res/ import path was removed;
+    resources must live inside an AAR or Android Library module instead. This folder is
+    recognized as a Gradle library module because it has its own build.gradle (see there for
+    the namespace) — Unity auto-includes any such subfolder of Assets/Plugins/Android and
+    wires it as a dependency of unityLibrary. No package attribute here: AGP forbids it
+    alongside build.gradle's `namespace`.
+-->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+</manifest>
