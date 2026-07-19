@@ -2,6 +2,7 @@
 using UnityEditor;
 using UnityEditor.Build;
 using UnityEngine;
+using UnityEngine.Rendering;
 using System.IO;
 
 /// <summary>
@@ -39,6 +40,12 @@ public static class BuildScript
             SceneBuilder.BuildMainScene();
             AssetDatabase.Refresh();
         }
+
+        // The scene and prefabs are built from code, so no material asset references
+        // the uGUI shaders. Without a reference, Unity strips them from the build and
+        // every Text/RawImage renders magenta (missing-shader colour). Force-include
+        // them so panels and the debug HUD actually render.
+        EnsureAlwaysIncludedShaders("UI/Default", "UI/Default Font", "Sprites/Default");
 
         // Player settings
         PlayerSettings.applicationIdentifier = AppIdentifier;
@@ -91,6 +98,44 @@ public static class BuildScript
         for (int i = 0; i < args.Length - 1; i++)
             if (args[i] == name) return args[i + 1];
         return null;
+    }
+
+    /// <summary>
+    /// Add shaders to GraphicsSettings' "Always Included Shaders" so they survive a
+    /// headless build even when no material asset references them (our scene is
+    /// generated from code). Idempotent.
+    /// </summary>
+    static void EnsureAlwaysIncludedShaders(params string[] names)
+    {
+        var so = new SerializedObject(GraphicsSettings.GetGraphicsSettings());
+        var list = so.FindProperty("m_AlwaysIncludedShaders");
+
+        foreach (var name in names)
+        {
+            var shader = Shader.Find(name);
+            if (shader == null)
+            {
+                Debug.LogWarning($"[BuildScript] Shader not found, cannot include: {name}");
+                continue;
+            }
+
+            bool present = false;
+            for (int i = 0; i < list.arraySize; i++)
+            {
+                if (list.GetArrayElementAtIndex(i).objectReferenceValue == shader)
+                {
+                    present = true;
+                    break;
+                }
+            }
+            if (present) continue;
+
+            list.InsertArrayElementAtIndex(list.arraySize);
+            list.GetArrayElementAtIndex(list.arraySize - 1).objectReferenceValue = shader;
+            Debug.Log($"[BuildScript] Always-included shader added: {name}");
+        }
+
+        so.ApplyModifiedProperties();
     }
 }
 #endif

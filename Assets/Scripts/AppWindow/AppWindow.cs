@@ -30,6 +30,7 @@ public class AppWindow : MonoBehaviour
     public int height = 720;
 
     private Texture2D _texture;
+    private bool _boundLiveFrames;   // switched to flipV once real ImageReader frames arrive
 
 #if UNITY_ANDROID && !UNITY_EDITOR
     private AndroidJavaObject _java;
@@ -45,15 +46,22 @@ public class AppWindow : MonoBehaviour
             filterMode = FilterMode.Bilinear,
         };
 
-#if UNITY_ANDROID && !UNITY_EDITOR
-        CreateJavaWindow();
-        // Frames are top-down out of ImageReader; flip in UV space on the panel.
-        if (targetPanel != null) targetPanel.SetContentTexture(_texture, flipV: true);
-        if (launchOnStart) Launch();
-#else
+        // Visible placeholder until real frames arrive, so the panel is never a blank
+        // or undefined-texture surface. The checkerboard is authored bottom-up, so no
+        // flip; live ImageReader frames are top-down and get flipV on first arrival.
         FillCheckerboard();
         _texture.Apply(false);
         if (targetPanel != null) targetPanel.SetContentTexture(_texture, flipV: false);
+
+#if UNITY_ANDROID && !UNITY_EDITOR
+        CreateJavaWindow();
+        // A non-system app cannot launch another app onto its own (untrusted) virtual
+        // display — Android throws SecurityException. The launch is expected to come
+        // from an elevated context: `adb shell am start --display <id> -n <pkg>/<act>`
+        // (tethered), or the app must be system-signed to self-launch. launchOnStart is
+        // left off by default to avoid a guaranteed SecurityException in the log.
+        if (launchOnStart) Launch();
+#else
         Debug.Log("[AppWindow] Editor: showing checkerboard (no Android app to launch).");
 #endif
     }
@@ -93,6 +101,15 @@ public class AppWindow : MonoBehaviour
 
         _texture.LoadRawTextureData(frame);
         _texture.Apply(false);
+
+        // First live frame: rebind with flipV — ImageReader frames are top-down,
+        // unlike the bottom-up checkerboard placeholder bound at startup.
+        if (!_boundLiveFrames && targetPanel != null)
+        {
+            targetPanel.SetContentTexture(_texture, flipV: true);
+            _boundLiveFrames = true;
+            Debug.Log("[AppWindow] Live frames arriving; bound app content to panel.");
+        }
     }
 
     void OnDestroy()

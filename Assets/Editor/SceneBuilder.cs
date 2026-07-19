@@ -134,7 +134,10 @@ public static class SceneBuilder
             var appWindow = go.AddComponent<AppWindow>();
             appWindow.packageName   = appPackage;
             appWindow.targetPanel   = panel;
-            appWindow.launchOnStart = true;
+            // Self-launch onto an untrusted virtual display is blocked by Android for a
+            // non-system app; the launch comes from `adb shell am start --display <id>`
+            // (tethered) or requires system signing. Don't attempt a doomed self-launch.
+            appWindow.launchOnStart = false;
         }
 
         var collider = go.AddComponent<BoxCollider>();
