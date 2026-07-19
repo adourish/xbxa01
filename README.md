@@ -3,8 +3,9 @@
 Unity Android app that drives **XREAL xbx a01** AR glasses from a **Google Pixel 9**
 over USB-C DisplayPort Alt Mode.
 
-**Status:** Desktop-mode controller — MVP scaffolding complete, on-device gesture
-verification pending (see [Current status](#current-status) below).
+**Status:** Desktop-mode controller — builds, installs, and launches on the Pixel 9;
+on-device gesture/desktop-mode verification still pending (see
+[Current status](#current-status) below).
 
 ---
 
@@ -183,8 +184,22 @@ launches it. Requires Unity 2022.3 LTS or Unity 6, Android Build Support, and
 
 ## Current status
 
-Scaffolding for the controller (trackpad input, button bar, layout presets, the a11y +
-IME services, JNI bridge) is committed and builds. Not yet verified on-device:
+**Build & deploy: fixed and verified (2026-07-19).** The controller's Android resources
+(`xbx_strings.xml`, `xbx_accessibility_config.xml`, `xbx_ime_method.xml`) originally sat
+under a loose `Assets/Plugins/Android/res/`, which this Unity version no longer
+supports (`OBSOLETE - Providing Android resources in Assets/Plugins/Android/res was
+removed`). They now live in a proper Gradle Android Library module —
+`Assets/Plugins/Android/XbxDesktopLib.androidlib/` (the `.androidlib` folder-name
+suffix, plus a `src/main/{AndroidManifest.xml,res/}` layout and an explicit
+`namespace` in `build.gradle`, is what Unity's exporter actually requires; a bare
+marker file or an unsuffixed folder name are silently ignored). With that fix,
+`tools\deploy.bat debug` builds, installs, and launches `com.xbxa01.glassesvr` on the
+Pixel 9 cleanly — process stays alive, Vulkan initializes on the Mali-G715, no crashes.
+
+That confirms the app *boots*. It does **not** yet confirm the desktop-mode design
+itself works — `tools/enable_desktop_mode.sh` hasn't been run on this device yet, and
+neither service has been enabled in Settings. The open on-device verification items
+from before are unchanged:
 
 1. **Cross-display gesture dispatch** — can `XbxAccessibilityService.dispatchGesture`
    reach the *external* (glasses) desktop display from a service bound on the *phone*
